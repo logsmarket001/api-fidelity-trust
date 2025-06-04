@@ -1,10 +1,11 @@
 import express, { type Express } from "express";
 import dotenv from "dotenv";
+import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { createServer } from "http";
 
-// Load environment variables first
+
 dotenv.config();
 
 console.log("Starting FidelityTrust Backend...");
@@ -12,6 +13,25 @@ console.log("Starting FidelityTrust Backend...");
 // Initialize Express app
 const app: Express = express();
 const httpServer = createServer(app);
+
+// CORS configuration
+const corsOptions = {
+  origin: "http://localhost:3000",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+  ],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
 
 // Basic middleware first
 // app.use(helmet()) // Security headers

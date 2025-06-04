@@ -26,6 +26,9 @@ const generateRefreshToken = (id: string): string => {
 // @access  Public
 export const register = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
+    console.log("🔵 Starting user registration process...");
+    console.log("📝 Request body:", JSON.stringify(req.body, null, 2));
+
     const {
       firstName,
       lastName,
@@ -43,12 +46,25 @@ export const register = asyncHandler(
     } = req.body;
 
     // Check if user already exists
+    console.log("🔍 Checking if user exists with email:", email);
     const userExists = await User.findOne({ email });
     if (userExists) {
+      console.log("❌ User already exists with email:", email);
       return next(new AppError("User already exists", 400));
     }
+    console.log("✅ No existing user found with this email");
 
     // Create new user
+    console.log("📝 Creating new user with data:", {
+      firstName,
+      lastName,
+      email,
+      role: "user",
+      balance: balance || 0,
+      availableBalance: availableBalance || 0,
+      currentBalance: currentBalance || 0,
+    });
+
     const user = await User.create({
       firstName,
       lastName,
@@ -56,7 +72,7 @@ export const register = asyncHandler(
       password,
       pin,
       personalInfo,
-      role: role || UserRole.USER,
+      role:"user",
       balance: balance || 0,
       availableBalance: availableBalance || 0,
       currentBalance: currentBalance || 0,
@@ -70,10 +86,15 @@ export const register = asyncHandler(
     });
 
     if (user) {
+      console.log("✅ User created successfully with ID:", user._id);
+
       // Generate tokens
+      console.log("🔑 Generating authentication tokens...");
       const token = generateToken(user._id.toString());
       const refreshToken = generateRefreshToken(user._id.toString());
+      console.log("✅ Tokens generated successfully");
 
+      console.log("📤 Sending response with user data and tokens");
       res.status(201).json({
         success: true,
         data: {
@@ -84,7 +105,7 @@ export const register = asyncHandler(
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
-            role: user.role === UserRole.USER ? "customer" : "admin",
+            role:"user",
             balance: user.balance,
             availableBalance: user.availableBalance,
             currentBalance: user.currentBalance,
@@ -97,7 +118,9 @@ export const register = asyncHandler(
           },
         },
       });
+      console.log("✅ Registration process completed successfully");
     } else {
+      console.log("❌ Failed to create user - Invalid user data");
       return next(new AppError("Invalid user data", 400));
     }
   }
@@ -186,8 +209,8 @@ export const adminLogin = asyncHandler(
     // Generate tokens
     const token = generateToken(admin._id.toString());
     const refreshToken = generateRefreshToken(admin._id.toString());
-console.log("this wen theroug",email,password)
-   return res.status(200).json({
+    console.log("this wen theroug", email, password);
+    return res.status(200).json({
       success: true,
       data: {
         _id: admin._id,

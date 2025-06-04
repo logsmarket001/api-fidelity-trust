@@ -26,8 +26,6 @@ export const getAllTransactions = asyncHandler(
   }
 );
 
-
-
 // @desc    Get transaction by ID
 // @route   GET /api/transactions/:id
 // @access  Private
@@ -62,6 +60,34 @@ export const getTransactionById = asyncHandler(
   }
 );
 
+// @desc    Get transaction by ID (Admin only)
+// @route   GET /api/transactions/admin/:id
+// @access  Private/Admin
+export const getAdminTransactionById = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const transaction = await Transaction.findById(req.params.id)
+      .populate("userId", "firstName lastName email accountNumber phoneNumber")
+      .lean();
+
+    if (!transaction) {
+      return next(new AppError("Transaction not found", 404));
+    }
+
+    // Get additional user details if needed
+    const user = await User.findById(transaction.userId).select(
+      "currentBalance availableBalance accountNumber"
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...transaction,
+        userDetails: user,
+      },
+    });
+  }
+);
+
 // @desc    Get user transactions
 // @route   GET /api/transactions/user
 // @access  Private
@@ -86,9 +112,7 @@ export const getUserTransactions = asyncHandler(
 // @access  Private
 export const createTransaction = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { type, subtype, action, amount, data,userId } = req.body;
-
-  
+    const { type, subtype, action, amount, data, userId } = req.body;
 
     // Validate transaction type and action
     if (!Object.values(TransactionType).includes(type)) {
@@ -136,18 +160,13 @@ export const createTransaction = asyncHandler(
   }
 );
 
-// @desc    Update transaction status
-// @route   PUT /api/transactions/:id/status
+// @desc    Update transaction
+// @route   PUT /api/transactions/admin/update-transaction-by-id/status
 // @access  Private/Admin
-export const updateTransactionStatus = asyncHandler(
+export const updateTransaction = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { status } = req.body;
     const transactionId = req.params.id;
-
-    // Validate status
-    if (!Object.values(TransactionStatus).includes(status)) {
-      return next(new AppError("Invalid transaction status", 400));
-    }
+    const updateData = req.body;
 
     // Find transaction
     const transaction = await Transaction.findById(transactionId);
@@ -155,46 +174,90 @@ export const updateTransactionStatus = asyncHandler(
       return next(new AppError("Transaction not found", 404));
     }
 
-    // If status is already the same, return
-    if (transaction.status === status) {
-      return res.status(200).json({
-        success: true,
-        data: transaction,
-      });
+    // Validate status if it's being updated
+    if (
+      updateData.status &&
+      !Object.values(TransactionStatus).includes(updateData.status)
+    ) {
+      return next(new AppError("Invalid transaction status", 400));
     }
 
-    // Find user
+    // Validate type if it's being updated
+    if (
+      updateData.type &&
+      !Object.values(TransactionType).includes(updateData.type)
+    ) {
+      return next(new AppError("Invalid transaction type", 400));
+    }
+
+    // Validate action if it's being updated
+    if (
+      updateData.action &&
+      !Object.values(TransactionAction).includes(updateData.action)
+    ) {
+      return next(new AppError("Invalid transaction action", 400));
+    }
+
+    // Validate amount if it's being updated
+    if (updateData.amount && updateData.amount < 0.01) {
+      return next(new AppError("Amount must be greater than 0", 400));
+    }
+
+    // Find user if we need to update balances
     const user = await User.findById(transaction.userId);
     if (!user) {
       return next(new AppError("User not found", 404));
     }
 
-    // Update transaction status
-    transaction.status = status;
-    await transaction.save();
-
-    // If status is SUCCESS, update available balance
-    if (status === TransactionStatus.SUCCESS) {
-      if (transaction.action === TransactionAction.CREDIT) {
-        user.availableBalance += transaction.amount;
-      } else if (transaction.action === TransactionAction.DEBIT) {
-        user.availableBalance -= transaction.amount;
+    // Handle status changes if status is being updated
+    if (updateData.status && updateData.status !== transaction.status) {
+      // If status is changing to SUCCESS, update available balance
+      if (updateData.status === TransactionStatus.SUCCESS) {
+        if (transaction.action === TransactionAction.CREDIT) {
+          user.availableBalance += transaction.amount;
+        } else if (transaction.action === TransactionAction.DEBIT) {
+          user.availableBalance -= transaction.amount;
+        }
       }
-    }
-    // If status is FAILED, revert current balance
-    else if (status === TransactionStatus.FAILED) {
-      if (transaction.action === TransactionAction.CREDIT) {
-        user.currentBalance -= transaction.amount;
-      } else if (transaction.action === TransactionAction.DEBIT) {
-        user.currentBalance += transaction.amount;
+      // If status is changing to FAILED, revert current balance
+      else if (updateData.status === TransactionStatus.FAILED) {
+        if (transaction.action === TransactionAction.CREDIT) {
+          user.currentBalance -= transaction.amount;
+        } else if (transaction.action === TransactionAction.DEBIT) {
+          user.currentBalance += transaction.amount;
+        }
       }
+      await user.save();
     }
 
-    await user.save();
+    // Handle amount changes if amount is being updated
+    if (updateData.amount && updateData.amount !== transaction.amount) {
+      const amountDifference = updateData.amount - transaction.amount;
+
+      if (transaction.action === TransactionAction.CREDIT) {
+        user.currentBalance += amountDifference;
+        if (transaction.status === TransactionStatus.SUCCESS) {
+          user.availableBalance += amountDifference;
+        }
+      } else if (transaction.action === TransactionAction.DEBIT) {
+        user.currentBalance -= amountDifference;
+        if (transaction.status === TransactionStatus.SUCCESS) {
+          user.availableBalance -= amountDifference;
+        }
+      }
+      await user.save();
+    }
+
+    // Update transaction with all provided fields
+    const updatedTransaction = await Transaction.findByIdAndUpdate(
+      transactionId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).populate("userId", "firstName lastName email accountNumber phoneNumber");
 
     res.status(200).json({
       success: true,
-      data: transaction,
+      data: updatedTransaction,
     });
   }
 );
@@ -204,7 +267,7 @@ export const updateTransactionStatus = asyncHandler(
 // @access  Private
 export const fundWallet = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    console.log("this is the request body that came in",req.body)
+    console.log("this is the request body that came in", req.body);
     const { amount, subtype, ...additionalData } = req.body;
     const userId = (req as any).user._id;
 
@@ -221,9 +284,13 @@ export const fundWallet = asyncHandler(
       },
     });
 
-    console.log("this is the created transaction ================================")
-    console.log(transaction)
-        console.log("this is the created transaction ================================")
+    console.log(
+      "this is the created transaction ================================"
+    );
+    console.log(transaction);
+    console.log(
+      "this is the created transaction ================================"
+    );
 
     // Update user's current balance
     const user = await User.findById(userId);
@@ -347,7 +414,6 @@ export const withdraw = asyncHandler(
 //     });
 //   }
 // );
-
 
 export const sendMoney = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {

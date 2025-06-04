@@ -7,7 +7,8 @@ import {
   fundWallet,
   withdraw,
   sendMoney,
-  updateTransactionStatus,
+  updateTransaction,
+  getAdminTransactionById,
 } from "../controllers/transactionController";
 import { protect, admin } from "../middlewares/authMiddleware";
 
@@ -25,9 +26,9 @@ router.get("/:id", getTransactionById);
 
 // Admin routes
 router.use(admin);
-router.get("/admin/get-all-transactions",getAllTransactions)
-
-  router.post("/admin/create-transaction",createTransaction);
-router.put("/:id/status", updateTransactionStatus);
+router.get("/admin/get-all-transactions", getAllTransactions);
+router.get("/admin/get-transaction-by-id/:id", getAdminTransactionById);
+router.post("/admin/create-transaction", createTransaction);
+router.put("/admin/update-transaction-by-id/:id", updateTransaction);
 
 export default router;
