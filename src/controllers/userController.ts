@@ -11,7 +11,7 @@ export const getAllUsers = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const users = await User.find().select("-password");
 
-   return res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: users.length,
       data: users,
@@ -42,8 +42,6 @@ export const getUserById = asyncHandler(
 // @access  Private/Admin
 export const createUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-
-
     const {
       firstName,
       lastName,
@@ -150,60 +148,134 @@ export const createUser = asyncHandler(
 // @access  Private/Admin
 export const updateUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
+    console.log("🔵 Starting user update process...");
+    console.log("📝 Request body:", JSON.stringify(req.body, null, 2));
+
     const {
       firstName,
       lastName,
       email,
+      password,
+      pin,
       role,
-
+      balance,
       availableBalance,
       currentBalance,
       isEmailVerified,
       kycVerified,
-      pin,
       balanceVisibility,
       personalInfo,
+      lastLogin,
     } = req.body;
 
     // Find user by id
-    let user = await User.findById(req.params.id);
+    console.log("🔍 Finding user with ID:", req.params.id);
+    let user = await User.findById(req.params.id).select("+password +pin");
 
     if (!user) {
+      console.log("❌ User not found with ID:", req.params.id);
       return next(new AppError("User not found", 404));
     }
+    console.log("✅ User found");
+
+    // Check if email is being updated and if it's already taken
+    if (email && email !== user.email) {
+      console.log("🔍 Checking if new email is available:", email);
+      const emailExists = await User.findOne({ email });
+      if (emailExists) {
+        console.log("❌ Email already in use:", email);
+        return next(new AppError("Email already in use", 400));
+      }
+      console.log("✅ Email is available");
+    }
+
+    // Prepare update data
+    const updateData: any = {};
+
+    // Basic Information
+    if (firstName) updateData.firstName = firstName;
+    if (lastName) updateData.lastName = lastName;
+    if (email) updateData.email = email;
+    if (password) updateData.password = password;
+    if (pin) updateData.pin = pin;
+    if (role) updateData.role = role;
+
+    // Balance Information
+    if (balance !== undefined) updateData.balance = balance;
+    if (availableBalance !== undefined)
+      updateData.availableBalance = availableBalance;
+    if (currentBalance !== undefined)
+      updateData.currentBalance = currentBalance;
+
+    // Verification Status
+    if (isEmailVerified !== undefined)
+      updateData.isEmailVerified = isEmailVerified;
+    if (kycVerified !== undefined) updateData.kycVerified = kycVerified;
+
+    // Balance Visibility Settings
+    if (balanceVisibility) {
+      updateData.balanceVisibility = {
+        available:
+          balanceVisibility.available ?? user.balanceVisibility.available,
+        current: balanceVisibility.current ?? user.balanceVisibility.current,
+      };
+    }
+
+    // Personal Information
+    if (personalInfo) {
+      updateData.personalInfo = {
+        phone: personalInfo.phone ?? user.personalInfo?.phone,
+        address: personalInfo.address ?? user.personalInfo?.address,
+        city: personalInfo.city ?? user.personalInfo?.city,
+        state: personalInfo.state ?? user.personalInfo?.state,
+        zipCode: personalInfo.zipCode ?? user.personalInfo?.zipCode,
+        ssn: personalInfo.ssn ?? user.personalInfo?.ssn,
+        driverLicense:
+          personalInfo.driverLicense ?? user.personalInfo?.driverLicense,
+      };
+    }
+
+    // Last Login
+    if (lastLogin) updateData.lastLogin = lastLogin;
+
+    console.log(
+      "📝 Updating user with data:",
+      JSON.stringify(updateData, null, 2)
+    );
 
     // Update user
-    user = await User.findByIdAndUpdate(
-      req.params.id,
-      {
-        firstName: firstName || user.firstName,
-        lastName: lastName || user.lastName,
-        email: email || user.email,
-        role: role || user.role,
-        availableBalance:
-          availableBalance !== undefined
-            ? availableBalance
-            : user.availableBalance,
-        currentBalance:
-          currentBalance !== undefined ? currentBalance : user.currentBalance,
-        isEmailVerified:
-          isEmailVerified !== undefined
-            ? isEmailVerified
-            : user.isEmailVerified,
-        kycVerified: kycVerified !== undefined ? kycVerified : user.kycVerified,
-        pin: pin || user.pin,
-        balanceVisibility: balanceVisibility || user.balanceVisibility,
-        personalInfo: personalInfo || user.personalInfo,
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    user = await User.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    }).select("-password -pin");
+
+    if (!user) {
+      console.log("❌ Failed to update user");
+      return next(new AppError("Failed to update user", 500));
+    }
+
+    console.log("✅ User updated successfully");
 
     res.status(200).json({
       success: true,
-      data: user,
+      data: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        balance: user.balance,
+        availableBalance: user.availableBalance,
+        currentBalance: user.currentBalance,
+        accountNumber: user.accountNumber,
+        isEmailVerified: user.isEmailVerified,
+        kycVerified: user.kycVerified,
+        balanceVisibility: user.balanceVisibility,
+        personalInfo: user.personalInfo,
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
     });
   }
 );

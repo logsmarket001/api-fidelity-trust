@@ -1,7 +1,7 @@
-import dotenv from "dotenv"
+import dotenv from "dotenv";
 
 // Load environment variables
-dotenv.config()
+dotenv.config();
 
 const config = {
   server: {
@@ -10,7 +10,9 @@ const config = {
   },
   database: {
     uri: process.env.MONGODB_URI || "mongodb://localhost:27017/fidelitytrust",
-    testUri: process.env.MONGODB_URI_TEST || "mongodb://localhost:27017/fidelitytrust_test",
+    testUri:
+      process.env.MONGODB_URI_TEST ||
+      "mongodb://localhost:27017/fidelitytrust_test",
   },
   jwt: {
     secret: process.env.JWT_SECRET || "default_jwt_secret",
@@ -35,6 +37,20 @@ const config = {
     url: process.env.BANK_API_URL || "https://api.example.com/banks",
     key: process.env.BANK_API_KEY || "",
   },
-}
+  email: {
+    host: process.env.EMAIL_HOST || "mail.fidelitytrust.com", // Your cPanel mail server
+    port: parseInt(process.env.EMAIL_PORT || "587"), // Usually 587 for TLS
+    secure: process.env.EMAIL_SECURE === "true", // true for 465, false for other ports
+    user: process.env.EMAIL_USER || "noreply@fidelitytrust.com",
+    password: process.env.EMAIL_PASSWORD || "",
+  },
+  app: {
+    appStoreLink:
+      process.env.APP_STORE_LINK || "https://apps.apple.com/app/fidelity-trust",
+    playStoreLink:
+      process.env.PLAY_STORE_LINK ||
+      "https://play.google.com/store/apps/details?id=com.fidelitytrust.app",
+  },
+};
 
-export default config
+export default config;
