@@ -5,13 +5,7 @@ let io: SocketIOServer
 
 export const initializeSocketIO = (httpServer: HTTPServer): SocketIOServer => {
   try {
-    io = new SocketIOServer(httpServer, {
-      cors: {
-        origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-        methods: ["GET", "POST"],
-        credentials: true,
-      },
-    })
+    io = new SocketIOServer(httpServer)
 
     io.on("connection", (socket) => {
       console.log(`✅ User connected: ${socket.id}`)

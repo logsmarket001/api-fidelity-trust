@@ -1,6 +1,5 @@
 import express, { type Express } from "express";
 import dotenv from "dotenv";
-import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { createServer } from "http";
@@ -16,24 +15,6 @@ const httpServer = createServer(app);
 
 // Basic middleware first
 // app.use(helmet()) // Security headers
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "https://fidelity-trust.vercel.app",
-    ],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept",
-      "Origin",
-    ],
-  })
-);
 app.use(express.json({ limit: "10mb" })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true, limit: "10mb" })); // Parse URL-encoded bodies
 app.use(morgan("dev")); // HTTP request logger
