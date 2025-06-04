@@ -1,0 +1,6 @@
+# .render.yaml
+services:
+  - type: web
+    name: fidelitytrust-backend
+    buildCommand: npm run build
+    startCommand: npm start
