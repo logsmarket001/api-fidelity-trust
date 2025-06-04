@@ -6,7 +6,7 @@
   "scripts": {
     "start": "npm run build && node dist/app.js",
     "dev": "nodemon --exec ts-node src/app.ts",
-    "build": "tsc",
+    "build": "npm install && tsc",
     "lint": "eslint . --ext .ts",
     "test": "jest"
   },
@@ -51,6 +51,8 @@
     "nodemon": "^3.1.10",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@types/express-serve-static-core": "^4.17.43",
+    "@types/socket.io": "^3.0.2"
   }
 }
