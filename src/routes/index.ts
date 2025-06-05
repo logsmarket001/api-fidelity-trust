@@ -29,7 +29,7 @@ router.get("/test", (req, res) => {
 router.use("/auth", authRoutes)
 router.use("/banks", bankRoutes)
 router.use("/transaction", transactionRoutes)
-// router.use("/chat", chatRoutes)
+router.use("/chat", chatRoutes)
 router.use("/user", userRoutes)
 router.use("/stocks", stockRoutes)
 
