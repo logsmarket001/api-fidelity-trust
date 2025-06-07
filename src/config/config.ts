@@ -15,13 +15,14 @@ const config = {
       "mongodb://localhost:27017/fidelitytrust_test",
   },
   jwt: {
-    secret: process.env.JWT_SECRET || "default_jwt_secret",
+    secret: process.env.JWT_SECRET || "your-super-secret-jwt-key-here",
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-    refreshSecret: process.env.JWT_REFRESH_SECRET || "default_refresh_secret",
+    refreshSecret:
+      process.env.JWT_REFRESH_SECRET || "your-super-secret-refresh-key-here",
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
   },
   bcrypt: {
-    saltRounds: Number.parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10),
+    saltRounds: Number.parseInt(process.env.BCRYPT_SALT_ROUNDS || "12", 10),
   },
   rateLimit: {
     windowMs: Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10), // 15 minutes
@@ -35,14 +36,17 @@ const config = {
   },
   bankApi: {
     url: process.env.BANK_API_URL || "https://api.example.com/banks",
-    key: process.env.BANK_API_KEY || "",
+    key: process.env.BANK_API_KEY || "your-bank-api-key-here",
   },
   email: {
-    host: process.env.EMAIL_HOST || "mail.fidelitytrust.com", // Your cPanel mail server
-    port: parseInt(process.env.EMAIL_PORT || "587"), // Usually 587 for TLS
-    secure: process.env.EMAIL_SECURE === "true", // true for 465, false for other ports
-    user: process.env.EMAIL_USER || "noreply@fidelitytrust.com",
-    password: process.env.EMAIL_PASSWORD || "",
+    smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
+    smtpPort: parseInt(process.env.SMTP_PORT || "587"),
+    smtpUser: process.env.SMTP_USER || "",
+    smtpPass: process.env.SMTP_PASS || "",
+    from:
+      process.env.EMAIL_FROM || "Fidelity Trust <noreply@fidelitytrust.com>",
+    fromName: process.env.EMAIL_FROM_NAME || "Fidelity Trust",
+    appUrl: process.env.APP_URL || "http://localhost:3000",
   },
   app: {
     appStoreLink:

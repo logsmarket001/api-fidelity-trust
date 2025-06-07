@@ -4,6 +4,8 @@ export enum TransactionType {
   FUND_WALLET = "fundWallet",
   SEND_MONEY = "sendMoney",
   WITHDRAW = "withdraw",
+  CREDIT = "credit",
+  DEBIT = "debit"
 }
 
 export enum TransactionAction {

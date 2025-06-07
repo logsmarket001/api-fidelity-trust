@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { createServer } from "http";
+import { initializeNotificationSocket } from "./websocket/notificationSocket";
 
 
 dotenv.config();
@@ -48,7 +49,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Initialize database and other services
+// Initialize database `and other services
 async function initializeServer() {
   try {
     console.log("Initializing database connection...");
@@ -62,7 +63,8 @@ async function initializeServer() {
     // Import and initialize Socket.IO
     const { initializeSocketIO } = await import("./websocket/socket");
     initializeSocketIO(httpServer);
-
+  
+    initializeNotificationSocket(httpServer)
     console.log("Socket.IO initialized");
 
     // Import and setup routes

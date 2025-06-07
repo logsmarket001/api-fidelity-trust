@@ -170,16 +170,6 @@ export const initializeSocketIO = (httpServer: HTTPServer): SocketIOServer => {
     // USER NAMESPACE
     const userNamespace = io.of("/user");
     userNamespace.on("connection", (socket) => {
-      console.log(`✅ [USER NAMESPACE] Connected: ${socket.id}`);
-      console.log(`[USER NAMESPACE] Socket details:`, {
-        id: socket.id,
-        handshake: {
-          query: socket.handshake.query,
-          headers: socket.handshake.headers,
-          address: socket.handshake.address,
-        },
-      });
-
       socket.on("join", async (userId: string) => {
         socket.join(userId);
         onlineUsers.set(userId, socket.id);
@@ -237,23 +227,12 @@ export const initializeSocketIO = (httpServer: HTTPServer): SocketIOServer => {
             break;
           }
         }
-        console.log(`❌ [USER NAMESPACE] Disconnected: ${socket.id}`);
       });
     });
 
     // ADMIN NAMESPACE
     const adminNamespace = io.of("/admin");
     adminNamespace.on("connection", (socket) => {
-      console.log(`✅ [ADMIN NAMESPACE] Connected: ${socket.id}`);
-      console.log(`[ADMIN NAMESPACE] Socket details:`, {
-        id: socket.id,
-        handshake: {
-          query: socket.handshake.query,
-          headers: socket.handshake.headers,
-          address: socket.handshake.address,
-        },
-      });
-
       socket.on("admin_typing", ({ userId, isTyping }) => {
         io.of("/user")
           .to(userId)
@@ -276,16 +255,10 @@ export const initializeSocketIO = (httpServer: HTTPServer): SocketIOServer => {
       socket.on("admin_mark_read", ({ userId, messageIds }) => {
         io.of("/user").to(userId).emit("admin_read_messages", { messageIds });
       });
-
-      socket.on("disconnect", () => {
-        console.log(`❌ [ADMIN NAMESPACE] Disconnected: ${socket.id}`);
-      });
     });
 
-    console.log("✅ Namespaced Socket.IO initialized");
     return io;
   } catch (error) {
-    console.error("❌ Failed to initialize Socket.IO:", error);
     throw error;
   }
 };

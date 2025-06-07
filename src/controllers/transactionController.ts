@@ -8,6 +8,7 @@ import Transaction, {
 import User from "../models/User";
 import { AppError } from "../utils/appError";
 import { asyncHandler } from "../utils/asyncHandler";
+import { createTransactionNotification } from "./notificationController";
 
 // @desc    Get all transactions
 // @route   GET /api/transactions
@@ -112,7 +113,7 @@ export const getUserTransactions = asyncHandler(
 // @access  Private
 export const createTransaction = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { type, subtype, action, amount, data, userId } = req.body;
+    const { type, subtype, status, action, amount, data, userId } = req.body;
 
     // Validate transaction type and action
     if (!Object.values(TransactionType).includes(type)) {
@@ -141,7 +142,7 @@ export const createTransaction = asyncHandler(
       subtype,
       action,
       amount,
-      status: TransactionStatus.PENDING,
+      status: status ?? TransactionStatus.PENDING,
       data,
     });
 
@@ -152,6 +153,9 @@ export const createTransaction = asyncHandler(
       user.currentBalance -= amount;
     }
     await user.save();
+
+    // Create notification for the transaction
+    await createTransactionNotification(userId, transaction);
 
     res.status(201).json({
       success: true,
@@ -228,6 +232,12 @@ export const updateTransaction = asyncHandler(
         }
       }
       await user.save();
+
+      // Create notification for status update
+      await createTransactionNotification(transaction.userId, {
+        ...transaction.toObject(),
+        status: updateData.status,
+      });
     }
 
     // Handle amount changes if amount is being updated
@@ -299,6 +309,9 @@ export const fundWallet = asyncHandler(
       await user.save();
     }
 
+    // Send notification
+    await createTransactionNotification(userId, transaction);
+
     res.status(201).json({
       success: true,
       data: transaction,
@@ -341,79 +354,15 @@ export const withdraw = asyncHandler(
     user.currentBalance -= amount;
     await user.save();
 
+    // Send notification
+    await createTransactionNotification(userId, transaction);
+
     res.status(201).json({
       success: true,
       data: transaction,
     });
   }
 );
-
-// @desc    Send money
-// @route   POST /api/transactions/send
-// @access  Private
-// export const sendMoney = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const { amount, subtype, ...additionalData } = req.body;
-//     const userId = (req as any).user._id;
-
-//     // Check if user has sufficient current balance
-//     const user = await User.findById(userId);
-//     if (!user) {
-//       return next(new AppError("User not found", 404));
-//     }
-
-//     if (user.currentBalance < amount) {
-//       return next(new AppError("Insufficient current balance", 400));
-//     }
-
-//     // Check if recipient exists
-//     // const recipient = await User.findById(recipientId);
-//     // if (!recipient) {
-//     //   return next(new AppError("Recipient not found", 404));
-//     // }
-
-//     // Create sender's transaction
-//     const senderTransaction = await Transaction.create({
-//       userId,
-//       type: TransactionType.SEND_MONEY,
-//       subtype: subtype ,
-//       action: TransactionAction.DEBIT,
-//       amount,
-//       status: TransactionStatus.PENDING,
-//       data: {
-
-//         ...additionalData,
-//       },
-//     });
-
-//     console.log("this subtype", subtype)
-//     console.log()
-//     // Create recipient's transaction
-//     // await Transaction.create({
-//     //   userId: recipientId,
-//     //   type: TransactionType.FUND_WALLET,
-//     //   subtype: subtype || "direct_transfer",
-//     //   action: TransactionAction.CREDIT,
-//     //   amount,
-//     //   status: TransactionStatus.PENDING,
-//     //   data: {
-//     //     senderId: userId,
-//     //     senderName: `${user.firstName} ${user.lastName}`,
-//     //     senderAccountNumber: user.accountNumber,
-//     //     ...additionalData,
-//     //   },
-//     // });
-
-//     // Update sender's current balance
-//     user.currentBalance -= amount;
-//     await user.save();
-
-//     res.status(201).json({
-//       success: true,
-//       data: senderTransaction,
-//     });
-//   }
-// );
 
 export const sendMoney = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -432,10 +381,6 @@ export const sendMoney = asyncHandler(
 
     // Check if recipient exists
     const recipientId = additionalData.data?.recipientId;
-    // if (!recipientId) {
-    //   return next(new AppError("Recipient ID is required", 400));
-    // }
-
     const recipient = await User.findById(recipientId);
     if (!recipient && subtype === "member") {
       return next(new AppError("Recipient not found", 404));
@@ -476,11 +421,18 @@ export const sendMoney = asyncHandler(
       // Update recipient's current balance only for member transactions
       recipient.currentBalance += amount;
       await recipient.save();
+
+      // Send notification to recipient
+      await createTransactionNotification(recipientId, recipientTransaction);
+      await createTransactionNotification(userId,senderTransaction);
     }
 
     // Update sender's current balance
     user.currentBalance -= amount;
     await user.save();
+
+    // Send notification to sender
+    await createTransactionNotification(userId, senderTransaction);
 
     res.status(201).json({
       success: true,
