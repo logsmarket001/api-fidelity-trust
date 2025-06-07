@@ -153,7 +153,8 @@ import type { Server as HTTPServer } from "http";
 import User from "../models/User";
 
 let io: SocketIOServer;
-
+//const ORIGIN = "http://localhost:3000"
+ const ORIGIN = "https://fidelitytrust.org";
 // Store online users
 const onlineUsers = new Map<string, string>(); // userId -> socketId
 
@@ -161,7 +162,7 @@ export const initializeSocketIO = (httpServer: HTTPServer): SocketIOServer => {
   try {
     io = new SocketIOServer(httpServer, {
       cors: {
-        origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+        origin: ORIGIN,
         methods: ["GET", "POST"],
         credentials: true,
       },

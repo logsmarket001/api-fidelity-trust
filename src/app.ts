@@ -14,10 +14,11 @@ console.log("Starting FidelityTrust Backend...");
 // Initialize Express app
 const app: Express = express();
 const httpServer = createServer(app);
-
+const ORIGIN = "http://localhost:3000"
+// const ORIGIN = "https://fidelitytrust.org";
 // CORS configuration
 const corsOptions = {
-  origin: "https://fidelitytrust.org",
+  origin: ORIGIN,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
     "Content-Type",
