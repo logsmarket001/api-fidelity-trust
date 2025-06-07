@@ -47,11 +47,11 @@ export const register = asyncHandler(
 
     // Check if user already exists
     console.log("🔍 Checking if user exists with email:", email);
-    // const userExists = await User.findOne({ email });
-    // if (userExists) {
-    //   console.log("❌ User already exists with email:", email);
-    //   return next(new AppError("User already exists", 400));
-    // }
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      console.log("❌ User already exists with email:", email);
+      return next(new AppError("User already exists", 400));
+    }
     console.log("✅ No existing user found with this email");
 
     // Create new user
@@ -93,7 +93,6 @@ export const register = asyncHandler(
       const token = generateToken(user._id.toString());
       const refreshToken = generateRefreshToken(user._id.toString());
       console.log("✅ Tokens generated successfully");
-
 
       console.log("📤 Sending response with user data and tokens");
       res.status(201).json({
@@ -165,7 +164,7 @@ export const login = asyncHandler(
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
-          role: user.role === UserRole.USER ? "customer" : "admin",
+          role: "user",
           balance: user.balance,
           availableBalance: user.availableBalance,
           currentBalance: user.currentBalance,
