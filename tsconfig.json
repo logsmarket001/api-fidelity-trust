@@ -31,6 +31,6 @@
     "checkJs": false,
     "allowJs": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "front.tsx"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

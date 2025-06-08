@@ -4,42 +4,28 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { createServer } from "http";
-import { initializeNotificationSocket } from "./websocket/notificationSocket";
-
+import { initializeSocketIO } from "./websocket/socket";
 
 dotenv.config();
 
 console.log("Starting FidelityTrust Backend...");
 
-// Initialize Express app
 const app: Express = express();
 const httpServer = createServer(app);
-//const ORIGIN = "http://localhost:3000"
- const ORIGIN = "https://fidelitytrust.org";
-// CORS configuration
-const corsOptions = {
-  origin: ORIGIN,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "Origin",
-  ],
-  credentials: true,
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-};
 
-// Apply CORS middleware
-app.use(cors(corsOptions));
-
-// Basic middleware first
-// app.use(helmet()) // Security headers
-app.use(express.json({ limit: "10mb" })); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true, limit: "10mb" })); // Parse URL-encoded bodies
-app.use(morgan("dev")); // HTTP request logger
+const ORIGIN = "https://fidelitytrust.org";
+// const ORIGIN = "http://localhost:3000";
+// Middleware
+app.use(
+  cors({
+    origin: ORIGIN,
+    credentials: true,
+  })
+);
+app.use(helmet());
+app.use(morgan("dev"));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint (early)
 app.get("/health", (req, res) => {
@@ -50,7 +36,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Initialize database `and other services
+// Initialize database and other services
 async function initializeServer() {
   try {
     console.log("Initializing database connection...");
@@ -61,12 +47,9 @@ async function initializeServer() {
 
     console.log("Database connected successfully");
 
-    // Import and initialize Socket.IO
-    const { initializeSocketIO } = await import("./websocket/socket");
+    // Initialize Socket.IO with all namespaces
     initializeSocketIO(httpServer);
-  
-    initializeNotificationSocket(httpServer)
-    console.log("Socket.IO initialized");
+    console.log("Socket.IO initialized with all namespaces");
 
     // Import and setup routes
     const routes = await import("./routes");

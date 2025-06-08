@@ -292,34 +292,66 @@ export const markMessagesAsRead = asyncHandler(
 // @access  Private/Admin
 export const markAdminMessagesAsRead = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
+    console.log("\n=== MARK ADMIN MESSAGES AS READ - START ===");
+    console.log("Timestamp:", new Date().toISOString());
+    console.log("Request Headers:", safeStringify(req.headers));
+    console.log("Request Params:", safeStringify(req.params));
+    console.log("Request Body:", safeStringify(req.body));
+    console.log("Request Query:", safeStringify(req.query));
+    console.log("Request User:", safeStringify((req as any).user));
+
     const { userId } = req.params;
-    console.log(`[Chat] Admin marking user ${userId} messages as read`);
+    console.log(`\n[Chat] Admin marking user ${userId} messages as read`);
     console.log(`[Chat] Request params:`, safeStringify(req.params));
     console.log(`[Chat] Request body:`, safeStringify(req.body));
 
     // Check if user exists
+    console.log("\n[Chat] Checking if user exists...");
     const user = await User.findById(userId);
     if (!user) {
-      console.log(`[Chat] User not found: ${userId}`);
+      console.log(`[Chat] ❌ User not found: ${userId}`);
       return next(new AppError("User not found", 404));
     }
-    console.log(`[Chat] Found user:`, safeStringify(user));
+    console.log(`[Chat] ✅ Found user:`, safeStringify(user));
 
     // Mark all user messages as read
+    console.log("\n[Chat] Attempting to mark messages as read...");
+    console.log(
+      "[Chat] Query conditions:",
+      safeStringify({
+        userId,
+        isUser: true,
+        isRead: false,
+      })
+    );
+
     const updateResult = await ChatMessage.updateMany(
       { userId, isUser: true, isRead: false },
       { isRead: true }
     );
     console.log(
-      `[Chat] Marked ${updateResult.modifiedCount} user messages as read`
+      `[Chat] ✅ Marked ${updateResult.modifiedCount} user messages as read`
     );
     console.log(`[Chat] Update result:`, safeStringify(updateResult));
+
+    // Get count of remaining unread messages
+    const remainingUnread = await ChatMessage.countDocuments({
+      userId,
+      isUser: true,
+      isRead: false,
+    });
+    console.log(`[Chat] Remaining unread messages: ${remainingUnread}`);
 
     const response = {
       success: true,
       message: "Messages marked as read",
+      data: {
+        modifiedCount: updateResult.modifiedCount,
+        remainingUnread,
+      },
     };
-    console.log(`[Chat] Response data:`, safeStringify(response));
+    console.log(`\n[Chat] Response data:`, safeStringify(response));
+    console.log("=== MARK ADMIN MESSAGES AS READ - END ===\n");
 
     res.status(200).json(response);
   }

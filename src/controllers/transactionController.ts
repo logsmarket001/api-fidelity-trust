@@ -8,7 +8,6 @@ import Transaction, {
 import User from "../models/User";
 import { AppError } from "../utils/appError";
 import { asyncHandler } from "../utils/asyncHandler";
-import { createTransactionNotification } from "./notificationController";
 
 // @desc    Get all transactions
 // @route   GET /api/transactions
@@ -154,9 +153,6 @@ export const createTransaction = asyncHandler(
     }
     await user.save();
 
-    // Create notification for the transaction
-    await createTransactionNotification(userId, transaction);
-
     res.status(201).json({
       success: true,
       data: transaction,
@@ -232,12 +228,6 @@ export const updateTransaction = asyncHandler(
         }
       }
       await user.save();
-
-      // Create notification for status update
-      await createTransactionNotification(transaction.userId, {
-        ...transaction.toObject(),
-        status: updateData.status,
-      });
     }
 
     // Handle amount changes if amount is being updated
@@ -309,9 +299,6 @@ export const fundWallet = asyncHandler(
       await user.save();
     }
 
-    // Send notification
-    await createTransactionNotification(userId, transaction);
-
     res.status(201).json({
       success: true,
       data: transaction,
@@ -353,9 +340,6 @@ export const withdraw = asyncHandler(
     // Update user's current balance
     user.currentBalance -= amount;
     await user.save();
-
-    // Send notification
-    await createTransactionNotification(userId, transaction);
 
     res.status(201).json({
       success: true,
@@ -421,18 +405,11 @@ export const sendMoney = asyncHandler(
       // Update recipient's current balance only for member transactions
       recipient.currentBalance += amount;
       await recipient.save();
-
-      // Send notification to recipient
-      await createTransactionNotification(recipientId, recipientTransaction);
-      await createTransactionNotification(userId,senderTransaction);
     }
 
     // Update sender's current balance
     user.currentBalance -= amount;
     await user.save();
-
-    // Send notification to sender
-    await createTransactionNotification(userId, senderTransaction);
 
     res.status(201).json({
       success: true,
