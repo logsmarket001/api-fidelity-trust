@@ -3,6 +3,9 @@ import User, { UserRole } from "../models/User";
 import { AppError } from "../utils/appError";
 import { asyncHandler } from "../utils/asyncHandler";
 import { usersData } from "../utils/data";
+import Transaction from "../models/Transaction";
+import ChatMessage from "../models/ChatMessage";
+import Notification from "../models/Notification";
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -285,17 +288,30 @@ export const updateUser = asyncHandler(
 // @access  Private/Admin
 export const deleteUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const user = await User.findById(req.params.id);
+    const userId = req.params.id;
 
+    // Find user first to ensure they exist
+    const user = await User.findById(userId);
     if (!user) {
       return next(new AppError("User not found", 404));
     }
 
+    // Delete all related data in parallel
+    await Promise.all([
+      // Delete all transactions
+      Transaction.deleteMany({ userId }),
+      // Delete all chat messages
+      ChatMessage.deleteMany({ userId }),
+      // Delete all notifications
+      Notification.deleteMany({ userId }),
+    ]);
+
+    // Finally delete the user
     await user.deleteOne();
 
     res.status(200).json({
       success: true,
-      message: "User deleted successfully",
+      message: "User and all related data deleted successfully",
     });
   }
 );

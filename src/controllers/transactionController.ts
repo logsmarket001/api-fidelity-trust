@@ -129,9 +129,9 @@ export const createTransaction = asyncHandler(
       return next(new AppError("User not found", 404));
     }
 
-    // For debit transactions, check if user has sufficient current balance
-    if (action === TransactionAction.DEBIT && user.currentBalance < amount) {
-      return next(new AppError("Insufficient current balance", 400));
+    // For debit transactions, check if user has sufficient available balance
+    if (action === TransactionAction.DEBIT && user.availableBalance < amount) {
+      return next(new AppError("Insufficient available balance", 400));
     }
 
     // Create transaction
@@ -145,12 +145,22 @@ export const createTransaction = asyncHandler(
       data,
     });
 
-    // Update user's current balance immediately
-    if (action === TransactionAction.CREDIT) {
-      user.currentBalance += amount;
-    } else if (action === TransactionAction.DEBIT) {
-      user.currentBalance -= amount;
+    // Handle balance updates based on transaction type and status
+    if (action === TransactionAction.DEBIT) {
+      if (status === TransactionStatus.PENDING) {
+        user.availableBalance -= amount;
+        user.currentBalance += amount;
+      } else if (status === TransactionStatus.SUCCESS) {
+        user.availableBalance -= amount;
+      }
+    } else if (action === TransactionAction.CREDIT) {
+      if (status === TransactionStatus.PENDING) {
+        user.currentBalance += amount;
+      } else if (status === TransactionStatus.SUCCESS) {
+        user.availableBalance += amount;
+      }
     }
+
     await user.save();
 
     res.status(201).json({
@@ -211,38 +221,23 @@ export const updateTransaction = asyncHandler(
 
     // Handle status changes if status is being updated
     if (updateData.status && updateData.status !== transaction.status) {
-      // If status is changing to SUCCESS, update available balance
-      if (updateData.status === TransactionStatus.SUCCESS) {
-        if (transaction.action === TransactionAction.CREDIT) {
-          user.availableBalance += transaction.amount;
-        } else if (transaction.action === TransactionAction.DEBIT) {
-          user.availableBalance -= transaction.amount;
-        }
-      }
-      // If status is changing to FAILED, revert current balance
-      else if (updateData.status === TransactionStatus.FAILED) {
-        if (transaction.action === TransactionAction.CREDIT) {
-          user.currentBalance -= transaction.amount;
-        } else if (transaction.action === TransactionAction.DEBIT) {
-          user.currentBalance += transaction.amount;
-        }
-      }
-      await user.save();
-    }
-
-    // Handle amount changes if amount is being updated
-    if (updateData.amount && updateData.amount !== transaction.amount) {
-      const amountDifference = updateData.amount - transaction.amount;
-
       if (transaction.action === TransactionAction.CREDIT) {
-        user.currentBalance += amountDifference;
-        if (transaction.status === TransactionStatus.SUCCESS) {
-          user.availableBalance += amountDifference;
+        if (transaction.status === TransactionStatus.PENDING) {
+          if (updateData.status === TransactionStatus.SUCCESS) {
+            user.currentBalance -= transaction.amount;
+            user.availableBalance += transaction.amount;
+          } else if (updateData.status === TransactionStatus.FAILED) {
+            user.currentBalance -= transaction.amount;
+          }
         }
       } else if (transaction.action === TransactionAction.DEBIT) {
-        user.currentBalance -= amountDifference;
-        if (transaction.status === TransactionStatus.SUCCESS) {
-          user.availableBalance -= amountDifference;
+        if (transaction.status === TransactionStatus.PENDING) {
+          if (updateData.status === TransactionStatus.SUCCESS) {
+            user.currentBalance -= transaction.amount;
+          } else if (updateData.status === TransactionStatus.FAILED) {
+            user.currentBalance -= transaction.amount;
+            user.availableBalance += transaction.amount;
+          }
         }
       }
       await user.save();
@@ -267,7 +262,6 @@ export const updateTransaction = asyncHandler(
 // @access  Private
 export const fundWallet = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    console.log("this is the request body that came in", req.body);
     const { amount, subtype, ...additionalData } = req.body;
     const userId = (req as any).user._id;
 
@@ -284,15 +278,7 @@ export const fundWallet = asyncHandler(
       },
     });
 
-    console.log(
-      "this is the created transaction ================================"
-    );
-    console.log(transaction);
-    console.log(
-      "this is the created transaction ================================"
-    );
-
-    // Update user's current balance
+    // Update user's current balance for pending transaction
     const user = await User.findById(userId);
     if (user) {
       user.currentBalance += amount;
@@ -314,14 +300,14 @@ export const withdraw = asyncHandler(
     const { amount, subtype, ...additionalData } = req.body;
     const userId = (req as any).user._id;
 
-    // Check if user has sufficient current balance
+    // Check if user has sufficient available balance
     const user = await User.findById(userId);
     if (!user) {
       return next(new AppError("User not found", 404));
     }
 
-    if (user?.currentBalance < amount) {
-      return next(new AppError("Insufficient current balance", 400));
+    if (user.availableBalance < amount) {
+      return next(new AppError("Insufficient available balance", 400));
     }
 
     // Create transaction
@@ -337,8 +323,9 @@ export const withdraw = asyncHandler(
       },
     });
 
-    // Update user's current balance
-    user.currentBalance -= amount;
+    // Update balances for pending transaction
+    user.availableBalance -= amount;
+    user.currentBalance += amount;
     await user.save();
 
     res.status(201).json({
@@ -353,14 +340,14 @@ export const sendMoney = asyncHandler(
     const { amount, subtype, ...additionalData } = req.body;
     const userId = (req as any).user._id;
 
-    // Check if user has sufficient current balance
+    // Check if user has sufficient available balance
     const user = await User.findById(userId);
     if (!user) {
       return next(new AppError("User not found", 404));
     }
 
-    if (user.currentBalance < amount) {
-      return next(new AppError("Insufficient current balance", 400));
+    if (user.availableBalance < amount) {
+      return next(new AppError("Insufficient available balance", 400));
     }
 
     // Check if recipient exists
@@ -402,13 +389,14 @@ export const sendMoney = asyncHandler(
         },
       });
 
-      // Update recipient's current balance only for member transactions
+      // Update recipient's current balance for pending transaction
       recipient.currentBalance += amount;
       await recipient.save();
     }
 
-    // Update sender's current balance
-    user.currentBalance -= amount;
+    // Update sender's balances for pending transaction
+    user.availableBalance -= amount;
+    user.currentBalance += amount;
     await user.save();
 
     res.status(201).json({

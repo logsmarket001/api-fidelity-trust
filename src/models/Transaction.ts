@@ -5,7 +5,8 @@ export enum TransactionType {
   SEND_MONEY = "sendMoney",
   WITHDRAW = "withdraw",
   CREDIT = "credit",
-  DEBIT = "debit"
+  DEBIT = "debit",
+  STOCKS = "stocks",
 }
 
 export enum TransactionAction {

@@ -32,7 +32,7 @@ router.get("/admin/get-all-users", getAllUsers);
 router.get("/admin/get-single-user/:id", getUserById);
 router.post("/admin/create-user", createUser);
 router.put("/admin/update-user/:id", updateUser);
-router.delete("admin/delete-user/:id", deleteUser);
+router.delete("/admin/delete-user/:id", deleteUser);
 router.post("/seed", seedUsers);
 
 export default router;

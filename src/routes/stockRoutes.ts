@@ -1,30 +1,17 @@
-import { Router } from "express"
+import { Router } from "express";
 import {
-  getAllStocks,
-  getStockBySymbol,
-  createStock,
-  updateStock,
-  buyStock,
+  purchaseStocks,
   getUserPortfolio,
-  deleteStock,
-} from "../controllers/stockController"
-import { protect, admin } from "../middlewares/authMiddleware"
+} from "../controllers/stockController";
+import { protect } from "../middlewares/authMiddleware";
 
-const router = Router()
-
-// Public routes
-router.get("/", getAllStocks)
-router.get("/:symbol", getStockBySymbol)
+const router = Router();
 
 // Protected routes
-router.use(protect)
-router.get("/portfolio/user", getUserPortfolio)
-router.post("/:symbol/buy", buyStock)
+router.use(protect);
 
-// Admin routes
-router.use(admin)
-router.post("/", createStock)
-router.put("/:id", updateStock)
-router.delete("/:id", deleteStock)
+// Stock routes
+router.post("/purchase", purchaseStocks);
+router.get("/portfolio/:userId", getUserPortfolio);
 
-export default router
+export default router;
