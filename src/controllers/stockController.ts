@@ -9,6 +9,8 @@ import Transaction, {
   TransactionAction,
   TransactionStatus,
 } from "../models/Transaction";
+import mongoose from "mongoose";
+import { notificationService } from "../services/notificationService";
 
 // @desc    Get all stocks
 // @route   GET /api/stocks
@@ -293,6 +295,7 @@ export const getUserPortfolio = asyncHandler(
       purchaseDate: -1,
     });
 
+    console.log(purchases[0]._id);
     res.status(200).json({
       success: true,
       data: purchases.map((purchase) => ({
@@ -311,24 +314,111 @@ export const getUserPortfolio = asyncHandler(
   }
 );
 
-// @desc    Delete stock
-// @route   DELETE /api/stocks/:id
-// @access  Private/Admin
-// export const deleteStock = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const stock = await Stock.findById(req.params.id);
+// @desc    Sell stocks
+// @route   POST /api/stocks/sell
+// @access  Private
+export const sellStock = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    console.log("the reqbody", req.body);
+    const { stockId, quantity, salePrice, totalValue } = req.body;
+    const userId = (req as any).user._id;
 
-//     if (!stock) {
-//       return next(new AppError("Stock not found", 404));
-//     }
+    // Validate required fields - allow 0 values but ensure fields exist
+    if (
+      stockId === undefined ||
+      quantity === undefined ||
+      salePrice === undefined ||
+      totalValue === undefined
+    ) {
+      return next(new AppError("Missing required fields", 400));
+    }
 
-//     // Soft delete by setting isActive to false
-//     stock.isActive = false;
-//     await stock.save();
+    // Validate numeric fields are not negative
+    if (quantity < 0 || salePrice < 0 || totalValue < 0) {
+      return next(new AppError("Values cannot be negative", 400));
+    }
 
-//     res.status(200).json({
-//       success: true,
-//       message: "Stock deactivated successfully",
-//     });
-//   }
-// );
+    // Get the user's stock purchase
+    const stockPurchase = await StockPurchase.findOne({
+      _id: stockId,
+      status: "active",
+    });
+
+    console.log("Found stock purchase:", stockPurchase);
+    console.log("Looking for stockId:", stockId);
+
+    if (!stockPurchase) {
+      return next(new AppError("Stock not found in portfolio", 404));
+    }
+
+    // Start a transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Create transaction record first
+      const transaction = await Transaction.findOneAndUpdate(
+        { _id: new mongoose.Types.ObjectId() },
+        {
+          userId,
+          type: TransactionType.STOCKS,
+          subtype: "stock_sale",
+          action: TransactionAction.CREDIT,
+          amount: totalValue,
+          status: TransactionStatus.SUCCESS,
+          data: {
+            stockId,
+            quantity,
+            salePrice,
+            totalValue,
+            description: "Stock sale",
+          },
+        },
+        { upsert: true, new: true, session }
+      );
+
+      // Update the stock purchase
+      if (quantity === stockPurchase.quantity) {
+        // If selling all shares, delete the record
+        await StockPurchase.findByIdAndDelete(stockPurchase._id, { session });
+      } else {
+        // Otherwise update the quantity
+        stockPurchase.quantity -= quantity;
+        await stockPurchase.save({ session });
+      }
+
+      // Update user's balance
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      user.availableBalance += totalValue;
+      user.currentBalance += totalValue;
+      await user.save({ session });
+
+      // Commit the transaction
+      await session.commitTransaction();
+
+      // Send notification
+
+      notificationService.sendTransactionNotification(
+        userId,
+        transaction,
+        "create"
+      );
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: "Stock sold successfully",
+      });
+    } catch (error) {
+      // Rollback on error
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+);

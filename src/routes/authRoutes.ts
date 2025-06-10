@@ -13,6 +13,7 @@ import {
   updateUserInfo,
   changePin,
   seedAdmin,
+  verifyUserForReset,
 } from "../controllers/authController";
 import { protect } from "../middlewares/authMiddleware";
 
@@ -23,6 +24,7 @@ router.post("/register", register);
 router.post("/login", login);
 router.post("/admin-login", adminLogin);
 router.post("/refresh-token", refreshToken);
+router.post("/verify-user", verifyUserForReset);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 router.get("/verify-email/:token", verifyEmail);

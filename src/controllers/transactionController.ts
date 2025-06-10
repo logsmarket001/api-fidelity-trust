@@ -8,6 +8,7 @@ import Transaction, {
 import User from "../models/User";
 import { AppError } from "../utils/appError";
 import { asyncHandler } from "../utils/asyncHandler";
+import { notificationService } from "../services/notificationService";
 
 // @desc    Get all transactions
 // @route   GET /api/transactions
@@ -163,6 +164,13 @@ export const createTransaction = asyncHandler(
 
     await user.save();
 
+    // Send notification
+    notificationService.sendTransactionNotification(
+      userId,
+      transaction,
+      "create"
+    );
+
     res.status(201).json({
       success: true,
       data: transaction,
@@ -171,7 +179,7 @@ export const createTransaction = asyncHandler(
 );
 
 // @desc    Update transaction
-// @route   PUT /api/transactions/admin/update-transaction-by-id/status
+// @route   PUT /api/transactions/admin/update-transaction-by-id/:id
 // @access  Private/Admin
 export const updateTransaction = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -250,6 +258,13 @@ export const updateTransaction = asyncHandler(
       { new: true, runValidators: true }
     ).populate("userId", "firstName lastName email accountNumber phoneNumber");
 
+    // Send notification
+    notificationService.sendTransactionNotification(
+      transaction.userId.toString(),
+      updatedTransaction,
+      "update"
+    );
+
     res.status(200).json({
       success: true,
       data: updatedTransaction,
@@ -284,6 +299,13 @@ export const fundWallet = asyncHandler(
       user.currentBalance += amount;
       await user.save();
     }
+
+    // Send notification
+    notificationService.sendTransactionNotification(
+      userId,
+      transaction,
+      "create"
+    );
 
     res.status(201).json({
       success: true,
@@ -327,6 +349,13 @@ export const withdraw = asyncHandler(
     user.availableBalance -= amount;
     user.currentBalance += amount;
     await user.save();
+
+    // Send notification
+    notificationService.sendTransactionNotification(
+      userId,
+      transaction,
+      "create"
+    );
 
     res.status(201).json({
       success: true,
@@ -392,12 +421,26 @@ export const sendMoney = asyncHandler(
       // Update recipient's current balance for pending transaction
       recipient.currentBalance += amount;
       await recipient.save();
+
+      // Send notification to recipient
+      notificationService.sendTransactionNotification(
+        recipientId,
+        recipientTransaction,
+        "create"
+      );
     }
 
     // Update sender's balances for pending transaction
     user.availableBalance -= amount;
     user.currentBalance += amount;
     await user.save();
+
+    // Send notification to sender
+    notificationService.sendTransactionNotification(
+      userId,
+      senderTransaction,
+      "create"
+    );
 
     res.status(201).json({
       success: true,

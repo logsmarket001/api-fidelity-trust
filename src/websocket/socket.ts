@@ -5,8 +5,8 @@ import Notification from "../models/Notification";
 import mongoose from "mongoose";
 
 let io: SocketIOServer;
-//const ORIGIN = "http://localhost:3000";
-const ORIGIN = "https://fidelitytrust.org";
+const ORIGIN = "http://localhost:3000";
+//const ORIGIN = "https://fidelitytrust.org";
 
 // Store online users
 const onlineUsers = new Map<string, string>(); // userId -> socketId
@@ -115,23 +115,55 @@ export const initializeSocketIO = (httpServer: HTTPServer): SocketIOServer => {
     // USER NOTIFICATION NAMESPACE
     const userNotificationNamespace = io.of("/user-notifications");
     userNotificationNamespace.on("connection", (socket) => {
-      socket.on("join", (userId: string) => {
-        socket.join(userId);
-        notificationUsers.set(userId, socket.id);
-      });
+    // //  console.log("[Notifications] User notification socket connected", {
+    //     socketId: socket.id,
+    //     transport: socket.conn.transport.name,
+    //   });
 
-      socket.on("mark_read", async ({ notificationIds }) => {
+      socket.on("join", (roomName: string, callback) => {
+        // console.log(`[Notifications] Join request received:`, {
+        //   roomName,
+        //   socketId: socket.id,
+        //   transport: socket.conn.transport.name,
+        // });
+
         try {
-          await Notification.updateMany(
-            { _id: { $in: notificationIds } },
-            { $set: { isRead: true } }
-          );
+          socket.join(roomName);
+          const userId = roomName.replace("user_", "");
+          notificationUsers.set(userId, socket.id);
+
+          // console.log(`[Notifications] User successfully joined room:`, {
+          //   roomName,
+          //   userId,
+          //   socketId: socket.id,
+          //   rooms: Array.from(socket.rooms),
+          // });
+
+          // Send acknowledgment
+          // if (callback) {
+          //   callback({ success: true, room: roomName });
+          // }
+
+          // Emit joined_room event
+          // socket.emit("joined_room", { room: roomName });
         } catch (error) {
-          console.error("Error marking notifications as read:", error);
+          console.error(`[Notifications] Error joining room:`, {
+            roomName,
+            error,
+            socketId: socket.id,
+          });
+          if (callback) {
+            callback({ success: false, error: "Failed to join room" });
+          }
         }
       });
 
+      socket.on("notification", (data) => {
+       // console.log(`[Notifications] Received notification for user:`, data);
+      });
+
       socket.on("disconnect", () => {
+        console.log("[Notifications] User notification socket disconnected");
         for (const [userId, socketId] of notificationUsers.entries()) {
           if (socketId === socket.id) {
             notificationUsers.delete(userId);
@@ -144,19 +176,19 @@ export const initializeSocketIO = (httpServer: HTTPServer): SocketIOServer => {
     // ADMIN NOTIFICATION NAMESPACE
     const adminNotificationNamespace = io.of("/admin-notifications");
     adminNotificationNamespace.on("connection", (socket) => {
+   //   console.log("[Notifications] Admin notification socket connected");
+
       socket.on("join", () => {
-        socket.join("admin-notifications");
+     //   console.log("[Notifications] Admin joining notification room");
+        socket.join("admin");
       });
 
-      socket.on("mark_read", async ({ notificationIds }) => {
-        try {
-          await Notification.updateMany(
-            { _id: { $in: notificationIds } },
-            { $set: { isRead: true } }
-          );
-        } catch (error) {
-          console.error("Error marking admin notifications as read:", error);
-        }
+      socket.on("notification", (data) => {
+    //    console.log(`[Notifications] Received notification for admin:`, data);
+      });
+
+      socket.on("disconnect", () => {
+   //     console.log("[Notifications] Admin notification socket disconnected");
       });
     });
 
@@ -185,27 +217,35 @@ export const sendUserNotification = (
   notification: any
 ) => {
   const io = getIO();
-  io.of("/user-notifications")
-    .to(`user_${userId}`)
-    .emit("new_notification", notification);
+  const roomName = `user_${userId}`;
+  console.log(
+    `[Notifications] Sending notification to room ${roomName}:`,
+    notification
+  );
+  io.of("/user-notifications").to(roomName).emit("notification", notification);
 };
 
 export const sendAdminNotification = (notification: any) => {
   const io = getIO();
-  io.of("/admin-notifications")
-    .to("admin")
-    .emit("new_notification", notification);
+  // console.log(
+  //   `[Notifications] Sending notification to admin room:`,
+  //   notification
+  // );
+  io.of("/admin-notifications").to("admin").emit("notification", notification);
 };
 
 export const joinNotificationRoom = (
   userId: string | mongoose.Types.ObjectId
 ) => {
   const io = getIO();
-  io.of("/user-notifications").socketsJoin(`user_${userId}`);
+  const roomName = `user_${userId}`;
+  console.log(`[Notifications] User ${userId} joining room ${roomName}`);
+  io.of("/user-notifications").socketsJoin(roomName);
 };
 
 export const joinAdminNotificationRoom = () => {
   const io = getIO();
+  console.log("[Notifications] Admin joining notification room");
   io.of("/admin-notifications").socketsJoin("admin");
 };
 
@@ -213,10 +253,13 @@ export const leaveNotificationRoom = (
   userId: string | mongoose.Types.ObjectId
 ) => {
   const io = getIO();
-  io.of("/user-notifications").socketsLeave(`user_${userId}`);
+  const roomName = `user_${userId}`;
+  console.log(`[Notifications] User ${userId} leaving room ${roomName}`);
+  io.of("/user-notifications").socketsLeave(roomName);
 };
 
 export const leaveAdminNotificationRoom = () => {
   const io = getIO();
+  console.log("[Notifications] Admin leaving notification room");
   io.of("/admin-notifications").socketsLeave("admin");
 };

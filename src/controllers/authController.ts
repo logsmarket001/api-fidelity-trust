@@ -395,29 +395,70 @@ export const changePassword = asyncHandler(
   }
 );
 
+// @desc    Verify user for password reset
+// @route   POST /api/auth/verify-user
+// @access  Public
+export const verifyUserForReset = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { email, ssnLastFour } = req.body;
+
+    if (!email || !ssnLastFour) {
+      return next(
+        new AppError("Email and SSN last four digits are required", 400)
+      );
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email }).select("+personalInfo.ssn");
+
+    console.log("the ssn", user);
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    // Verify SSN last four digits
+    if (
+      !user.personalInfo?.ssn ||
+      user.personalInfo.ssn.slice(-4) !== ssnLastFour
+    ) {
+      return next(new AppError("Invalid SSN last four digits", 401));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User verified successfully",
+      data: {
+        userId: user._id,
+      },
+    });
+  }
+);
+
 // @desc    Forgot password
 // @route   POST /api/auth/forgot-password
 // @access  Public
 export const forgotPassword = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { email } = req.body;
+    const { userId, newPassword } = req.body;
 
-    // Find user by email
-    const user = await User.findOne({ email });
+    if (!userId || !newPassword) {
+      return next(new AppError("User ID and new password are required", 400));
+    }
+
+    // Find user by ID
+    const user = await User.findById(userId);
 
     if (!user) {
       return next(new AppError("User not found", 404));
     }
 
-    // In a real application, you would:
-    // 1. Generate a reset token
-    // 2. Save it to the user document with an expiry
-    // 3. Send an email with a reset link
+    // Update password
+    user.password = newPassword;
+    await user.save();
 
-    // For this implementation, we'll just return a success message
     res.status(200).json({
       success: true,
-      message: "Password reset email sent",
+      message: "Password reset successfully",
     });
   }
 );
