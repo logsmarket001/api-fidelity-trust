@@ -600,3 +600,76 @@ export const seedAdmin = asyncHandler(
     });
   }
 );
+
+// @desc    Change admin password
+// @route   PUT /api/auth/admin/change-password/:id
+// @access  Private/Admin
+export const changeAdminPassword = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { currentPassword, newPassword } = req.body;
+    const adminId = req.params.id;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return next(
+        new AppError("Current password and new password are required", 400)
+      );
+    }
+
+    // Find admin by ID and select password
+    const admin = await User.findOne({
+      _id: adminId,
+      role: UserRole.ADMIN,
+    }).select("+password");
+
+    if (!admin) {
+      return next(new AppError("Admin not found", 404));
+    }
+
+    // Verify current password
+    const isPasswordValid = await admin.comparePassword(currentPassword);
+    if (!isPasswordValid) {
+      return next(new AppError("Current password is incorrect", 401));
+    }
+
+    // Update password
+    admin.password = newPassword;
+    await admin.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Admin password changed successfully",
+    });
+  }
+);
+
+// @desc    Get admin details
+// @route   GET /api/auth/admin/me
+// @access  Private/Admin
+export const getAdmin = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = (req as any).user._id;
+
+    const admin = await User.findOne({ _id: userId, role: UserRole.ADMIN });
+
+    if (!admin) {
+      return next(new AppError("Admin not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        _id: admin._id,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        email: admin.email,
+        role: admin.role,
+        isEmailVerified: admin.isEmailVerified,
+        kycVerified: admin.kycVerified,
+        lastLogin: admin.lastLogin,
+        createdAt: admin.createdAt,
+        updatedAt: admin.updatedAt,
+      },
+    });
+  }
+);

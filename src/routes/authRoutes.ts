@@ -14,8 +14,10 @@ import {
   changePin,
   seedAdmin,
   verifyUserForReset,
+  changeAdminPassword,
+  getAdmin,
 } from "../controllers/authController";
-import { protect } from "../middlewares/authMiddleware";
+import { protect, admin } from "../middlewares/authMiddleware";
 
 const router = Router();
 
@@ -37,5 +39,10 @@ router.post("/logout", logout);
 router.put("/change-password", changePassword);
 router.put("/update-info", updateUserInfo);
 router.put("/change-pin", changePin);
+
+// Admin routes
+router.use(admin);
+router.get("/admin/me", getAdmin);
+router.put("/admin/change-password/:id", changeAdminPassword);
 
 export default router;
