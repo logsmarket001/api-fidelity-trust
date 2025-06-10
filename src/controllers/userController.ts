@@ -27,8 +27,11 @@ export const getAllUsers = asyncHandler(
 // @access  Private/Admin
 export const getUserById = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findById(req.params.id).select(
+      "firstName lastName email role balance availableBalance currentBalance accountNumber isEmailVerified kycVerified balanceVisibility personalInfo lastLogin createdAt updatedAt +personalInfo.ssn"
+    );
 
+    console.log("the user i sent ", user);
     if (!user) {
       return next(new AppError("User not found", 404));
     }
@@ -169,6 +172,7 @@ export const updateUser = asyncHandler(
       balanceVisibility,
       personalInfo,
       lastLogin,
+      accountNumber,
     } = req.body;
 
     // Find user by id
@@ -192,6 +196,20 @@ export const updateUser = asyncHandler(
       console.log("✅ Email is available");
     }
 
+    // Check if account number is being updated and if it's already taken
+    if (accountNumber && accountNumber !== user.accountNumber) {
+      console.log(
+        "🔍 Checking if new account number is available:",
+        accountNumber
+      );
+      const accountNumberExists = await User.findOne({ accountNumber });
+      if (accountNumberExists) {
+        console.log("❌ Account number already in use:", accountNumber);
+        return next(new AppError("Account number already in use", 400));
+      }
+      console.log("✅ Account number is available");
+    }
+
     // Prepare update data
     const updateData: any = {};
 
@@ -202,6 +220,7 @@ export const updateUser = asyncHandler(
     if (password) updateData.password = password;
     if (pin) updateData.pin = pin;
     if (role) updateData.role = role;
+    if (accountNumber) updateData.accountNumber = accountNumber;
 
     // Balance Information
     if (balance !== undefined) updateData.balance = balance;

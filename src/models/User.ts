@@ -1,6 +1,6 @@
-import mongoose, { type Document, Schema } from "mongoose"
-import bcrypt from "bcryptjs"
-import config from "../config/config"
+import mongoose, { type Document, Schema } from "mongoose";
+import bcrypt from "bcryptjs";
+import config from "../config/config";
 
 export enum UserRole {
   USER = "user",
@@ -8,37 +8,37 @@ export enum UserRole {
 }
 
 export interface IUser extends Document {
-  _id: mongoose.Types.ObjectId
-  firstName: string
-  lastName: string
-  email: string
-  password: string
-  role: UserRole
-  balance: number
-  availableBalance: number
-  currentBalance: number
-  accountNumber: string
-  isEmailVerified: boolean
-  kycVerified: boolean
-  pin?: string
+  _id: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  balance: number;
+  availableBalance: number;
+  currentBalance: number;
+  accountNumber: string;
+  isEmailVerified: boolean;
+  kycVerified: boolean;
+  pin?: string;
   balanceVisibility: {
-    available: boolean
-    current: boolean
-  }
+    available: boolean;
+    current: boolean;
+  };
   personalInfo?: {
-    phone?: string
-    address?: string
-    city?: string
-    state?: string
-    zipCode?: string
-    ssn?: string
-    driverLicense?: string
-  }
-  lastLogin: Date
-  createdAt: Date
-  updatedAt: Date
-  comparePassword(candidatePassword: string): Promise<boolean>
-  comparePin(candidatePin: string): Promise<boolean>
+    phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    ssn?: string;
+    driverLicense?: string;
+  };
+  lastLogin: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  comparePassword(candidatePassword: string): Promise<boolean>;
+  comparePin(candidatePin: string): Promise<boolean>;
 }
 
 const UserSchema: Schema = new Schema(
@@ -59,7 +59,10 @@ const UserSchema: Schema = new Schema(
       // unique: true,
       trim: true,
       lowercase: true,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please provide a valid email"],
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        "Please provide a valid email",
+      ],
     },
     password: {
       type: String,
@@ -116,10 +119,7 @@ const UserSchema: Schema = new Schema(
       city: String,
       state: String,
       zipCode: String,
-      ssn: {
-        type: String,
-        select: false,
-      },
+      ssn: String,
       driverLicense: {
         type: String,
         select: false,
@@ -131,57 +131,63 @@ const UserSchema: Schema = new Schema(
   },
   {
     timestamps: true,
-  },
-)
+  }
+);
 
 // Generate account number before saving
 UserSchema.pre("save", async function (next) {
   if (!this.accountNumber) {
     // Generate a random 10-digit account number
-    this.accountNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString()
+    this.accountNumber = Math.floor(
+      1000000000 + Math.random() * 9000000000
+    ).toString();
   }
-  next()
-})
+  next();
+});
 
 // Hash password before saving
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
-    return next()
+    return next();
   }
 
   try {
-    const salt = await bcrypt.genSalt(config.bcrypt.saltRounds)
-    this.password = await bcrypt.hash(this.password as string, salt)
-    next()
+    const salt = await bcrypt.genSalt(config.bcrypt.saltRounds);
+    this.password = await bcrypt.hash(this.password as string, salt);
+    next();
   } catch (error: any) {
-    next(error)
+    next(error);
   }
-})
+});
 
 // Hash PIN before saving
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("pin") || !this.pin) {
-    return next()
+    return next();
   }
 
   try {
-    const salt = await bcrypt.genSalt(config.bcrypt.saltRounds)
-    this.pin = await bcrypt.hash(this.pin as string, salt)
-    next()
+    const salt = await bcrypt.genSalt(config.bcrypt.saltRounds);
+    this.pin = await bcrypt.hash(this.pin as string, salt);
+    next();
   } catch (error: any) {
-    next(error)
+    next(error);
   }
-})
+});
 
 // Method to compare password
-UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password)
-}
+UserSchema.methods.comparePassword = async function (
+  candidatePassword: string
+): Promise<boolean> {
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 // Method to compare PIN
-UserSchema.methods.comparePin = async function (candidatePin: string): Promise<boolean> {
-  if (!this.pin) return false
-  return bcrypt.compare(candidatePin, this.pin)
-}
+UserSchema.methods.comparePin = async function (
+  candidatePin: string
+): Promise<boolean> {
+  if (!this.pin) return false;
+  return bcrypt.compare(candidatePin, this.pin);
+};
 
-export default mongoose.model<IUser>("User", UserSchema)
+export default mongoose.model<IUser>("User", UserSchema);
