@@ -5,8 +5,8 @@ import Notification from "../models/Notification";
 import mongoose from "mongoose";
 
 let io: SocketIOServer;
-const ORIGIN = "http://localhost:3000";
-//const ORIGIN = "https://fidelitytrust.org";
+//const ORIGIN = "http://localhost:3000";
+const ORIGIN = "https://fidelitytrust.org";
 
 // Store online users
 const onlineUsers = new Map<string, string>(); // userId -> socketId
