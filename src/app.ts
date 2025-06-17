@@ -13,16 +13,20 @@ console.log("Starting FidelityTrust Backend...");
 const app: Express = express();
 const httpServer = createServer(app);
 
-const ORIGIN = "https://fidelitytrusts.org";
-
- //const ORIGIN = "http://localhost:3000";
-// Middleware
+// CORS configuration
 app.use(
   cors({
-    origin: ORIGIN,
+    origin: [
+      "https://fidelitytrusts.org", // your custom domain
+      "https://fidelity-trust-frontend-testing.vercel.app",
+      "https://localhost:3000",
+    ],
     credentials: true,
+    methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   })
 );
+
+// Middleware
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
