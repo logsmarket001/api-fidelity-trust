@@ -13,8 +13,9 @@ console.log("Starting FidelityTrust Backend...");
 const app: Express = express();
 const httpServer = createServer(app);
 
-const ORIGIN = "https://fidelitytrust.org";
-// const ORIGIN = "http://localhost:3000";
+const ORIGIN = "https://fidelitytrusts.org";
+
+ //const ORIGIN = "http://localhost:3000";
 // Middleware
 app.use(
   cors({
