@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 
 let io: SocketIOServer;
 //const ORIGIN = "http://localhost:3000";
-const ORIGIN = "https://fidelitytrust.org";
+const ORIGIN = "https://www.fidelitytrusts.org";
 
 // Store online users
 const onlineUsers = new Map<string, string>(); // userId -> socketId

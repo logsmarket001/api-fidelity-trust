@@ -147,18 +147,23 @@ export const createTransaction = asyncHandler(
     });
 
     // Handle balance updates based on transaction type and status
-    if (action === TransactionAction.DEBIT) {
-      if (status === TransactionStatus.PENDING) {
-        user.availableBalance -= amount;
-        user.currentBalance += amount;
-      } else if (status === TransactionStatus.SUCCESS) {
-        user.availableBalance -= amount;
-      }
-    } else if (action === TransactionAction.CREDIT) {
-      if (status === TransactionStatus.PENDING) {
-        user.currentBalance += amount;
-      } else if (status === TransactionStatus.SUCCESS) {
+    if (action === TransactionAction.CREDIT) {
+      if (status === TransactionStatus.SUCCESS) {
+        // For successful credit, add to both balances
         user.availableBalance += amount;
+        user.currentBalance += amount;
+      } else if (status === TransactionStatus.PENDING) {
+        // For pending credit, add only to current balance
+        user.currentBalance += amount;
+      }
+    } else if (action === TransactionAction.DEBIT) {
+      if (status === TransactionStatus.SUCCESS) {
+        // For successful debit, deduct from available balance
+        user.availableBalance -= amount;
+      } else if (status === TransactionStatus.PENDING) {
+        // For pending debit, deduct from available and add to current
+        user.availableBalance -= amount;
+        user.currentBalance += amount;
       }
     }
 
@@ -232,19 +237,22 @@ export const updateTransaction = asyncHandler(
       if (transaction.action === TransactionAction.CREDIT) {
         if (transaction.status === TransactionStatus.PENDING) {
           if (updateData.status === TransactionStatus.SUCCESS) {
-            user.currentBalance -= transaction.amount;
+            // For credit pending to success, add to available balance only
             user.availableBalance += transaction.amount;
           } else if (updateData.status === TransactionStatus.FAILED) {
+            // For failed credit, remove from current balance
             user.currentBalance -= transaction.amount;
           }
         }
       } else if (transaction.action === TransactionAction.DEBIT) {
         if (transaction.status === TransactionStatus.PENDING) {
           if (updateData.status === TransactionStatus.SUCCESS) {
+            // For debit pending to success, remove from current balance only
             user.currentBalance -= transaction.amount;
           } else if (updateData.status === TransactionStatus.FAILED) {
-            user.currentBalance -= transaction.amount;
+            // For failed debit, restore available balance and remove from current
             user.availableBalance += transaction.amount;
+            user.currentBalance -= transaction.amount;
           }
         }
       }

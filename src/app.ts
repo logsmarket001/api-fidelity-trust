@@ -18,12 +18,21 @@ app.use(
   cors({
     origin: [
       "https://www.fidelitytrusts.org",
-
       "https://fidelity-trust-frontend-testing.vercel.app",
       "https://localhost:3000",
+      "http://localhost:3000", // Adding http version for local development
     ],
     credentials: true,
-    methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+    ],
+    exposedHeaders: ["Content-Range", "X-Content-Range"],
+    maxAge: 86400, // 24 hours
   })
 );
 
