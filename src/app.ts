@@ -17,7 +17,8 @@ const httpServer = createServer(app);
 app.use(
   cors({
     origin: [
-      "https://fidelitytrusts.org", // your custom domain
+      "https://www.fidelitytrusts.org",
+
       "https://fidelity-trust-frontend-testing.vercel.app",
       "https://localhost:3000",
     ],
